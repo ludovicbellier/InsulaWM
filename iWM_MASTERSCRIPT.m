@@ -1,31 +1,25 @@
 %{
 This script performs all preprocessing and analysis steps underlying our
 Insula Working Memory study.
-I. Preprocessing:
-- preprocess the song stimulus (waveform -> auditory spectrogram);
+I. Preprocessing of iEEG data:
 - for each patient:
-    - preprocess ECoG data (estimation of HFA);
-    - detect artifacts (noisy time samples);
-    - process anatomical data (MNI electrode coordinates and atlas labels);
-II. Encoding models:
-- launch all encoding models (STRFs);
-- collect STRF metrics and identify significant electrodes
-- Fig. 1 - plot example data
-- Fig. 2 - analyze STRF prediction accuracies
-- Fig. 3 - perform an ICA on STRF coefficients
-- Fig. 4 - perform a sliding correlation between ICA components and
-           the song spectrogram
-III. Decoding models:
-- launch linear decoding models for all significant electrodes, and after
-  ablating anatomical and functional sets of electrodes
-- Fig. 5 - analyze decoding accuracies in the ablation analysis
-- launch linear decoding models by bootstrapping the number of electrodes
-  used as predictors and the dataset duration
-- launch linear and nonlinear reconstruction of the song spectrogram from
-  all significant electrodes
-- Fig. 6 - analyze output of the bootstrap analysis and of the linear and
-           nonlinear song reconstruction
+    - import and clean iEEG data;
+    - extract triggers;
+    - epoch and re-reference data;
+    - mark bad trials;
+    - compute Time-Frequency Representation;
+II. Preprocessing of anatomical data:
+- for each patient:
+    - identify and label insular electrodes (files provided)
+    - extract TF data for insular channels
+III. Analyses and figures:
+- for each patient:
+    - statistical tests for emergence from baseline
+- across all patients:
+    - k-means clustering
+    - create all figures
 %}
+
 
 %% Initialization
 % add FieldTrip and other important functions to the path
@@ -67,34 +61,36 @@ end
 
 
 %% II. Preprocessing of anatomical data
+% after identifying contacts in the insula, two patients with epileptic
+% activity on all of their insular contacts were removed
 
-% plot recon to identify and validate insular contacts
-IWM_plotRecon(patientCode);
+% anatomical information is contained in
+% allInsulaMNIcoord_12patients_FINAL.mat and anatDataInsula_FINAL.mat
 
-IWM_extractInsulaElecCoord;
-% from this point, anatomical data (coordinates + anatomical labels) are
-% included with each output, to ensure matching between func and anat chans
+% redefine patient list
+patientList = {'IR57', 'IR85', 'OS21', 'OS27', 'OS29', 'OS32', ...
+               'OS34', 'OS36', 'OS38', 'OS40', 'OS43', 'OS51'};
 
-for idx = 1:14
-    IWM_extractInsulaTFdata(idx);
+% loop over patients
+P = length(patientList);
+for idxP = 1:P
+    % only keep TFR from insular channels
+    iWM_extractInsulaTFdata(patientList{idxP});
 end
 
-IWM_matchFuncAnatElecs; % also, output index of functional channels to match with elec coordinates
 
-IWM_prepareInsulaAnatData;
+%% III. Analyses and figures
+% compute statistical tests on the whole or probe-only time window,
+% returning indices of time samples significantly emerging from baseline
+iWM_statsNFBenvelopes('whole');
+iWM_statsNFBenvelopes('probe');
 
-%% script to be used in the paper
-IWM_statsNFBenvelopes('whole');
-IWM_statsNFBenvelopes('probe');
+% sort trials by RT, compute 10 subaverages and perform k-means clustering
+iWM_probeClusterAnalysis;
 
-IWM_plotNFBenvelopes('whole');
-IWM_plotNFBenvelopes('probe');
-
-IWM_probeClusterAnalysis;
-
-%% output figures
-IWM_fig1_RThist;
-IWM_fig2_coverage;
-IWM_fig3_tempProfilesProbe;
-IWM_fig4_clusterAnalysis;
-IWM_fig5_tempProfilesWhole;
+% create all figures
+iWM_fig1_RThist;
+iWM_fig2_coverage;
+iWM_fig3_tempProfilesProbe;
+iWM_fig4_clusterAnalysis;
+iWM_fig5_tempProfilesWhole;

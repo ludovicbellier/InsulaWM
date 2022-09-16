@@ -9,6 +9,7 @@ if exist('ft_defaults.m', 'file') == 0
     iWM_setPath;
 end
 
+
 %% 2. define parameters
 global dataPath;
 if isempty(dataPath)
